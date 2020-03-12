@@ -4,14 +4,25 @@ import json
 import numpy as np
 import os
 import pathlib
-from nltk.stem import WordNetLemmatizer
-import re
-from unidecode import unidecode
 
 cwd = pathlib.Path(os.getcwd())
 
 def preprocess(data):
+    """
+    Perform the following commands to set up the WordNetLemmatizer
+    import nltk
+    nltk.download("all")
 
+    This function preprocess the data using the following steps:
+    - lowercase
+    - remove hyphens
+    - remove numbers, punctuations and special characters
+    - remove unit of measurements
+    - lemmatize words
+    """
+    from nltk.stem import WordNetLemmatizer
+    import re
+    from unidecode import unidecode
     lemmatizer = WordNetLemmatizer()
 
     data = ' '.join(data)
@@ -30,7 +41,10 @@ def preprocess(data):
 
 def dataSplit(data, labels, classesA, classesB):
     '''
-    return labels of 0 for class A and 1 for class B
+    Given two class clusters A, B.
+    This function will filter the data to only contain recipes from the two classes clusters
+
+    Recipes from class cluster A will be labelled 0 and B, 1.
     '''
     from numpy.random import permutation
 
@@ -63,7 +77,14 @@ def dataSplit(data, labels, classesA, classesB):
 
 def adjustTrainingSet(data, labels, children, model):
     '''
-    return labels of 0 for class A and 1 for class B
+    Given a model, it will separate the data into two subsets (A, B)
+
+    Subset A correspond to the data predicted with label 0 by the model
+    Subset B correspond to the data predicted with label 1 by the model
+
+    Children contains the names of the subsets
+
+    return a dictionary mapping the children name to subset
     '''
     from scipy.sparse import vstack
 
@@ -73,42 +94,11 @@ def adjustTrainingSet(data, labels, children, model):
     zero = np.where(preds == 0)
     one = np.where(preds == 1)
 
-    dct = {
-        children[0]: (data[zero], labels[zero]),
-        children[1]: (data[one], labels[one])
-    }
-
-    return dct
-
-def loadFoldData(fold):
-    t, tl = loadFoldTrainData(fold)
-    v, vl = loadFoldValData(fold)
-    return t, tl, v, vl
+    return {children[0]: (data[zero], labels[zero]),
+            children[1]: (data[one], labels[one])}
 
 
-def loadFoldTrainData(fold):
-    data = json.load(open(str(cwd/"fold_data"/str(fold)/"train.json")))
-    # return np.array([[w.lower() for w in t] for t in data["data"]]), np.array(data["label"])
-    return np.array([" ".join(t).lower().split(" ") for t in data["data"]]), np.array(data["label"])
-
-
-def loadFoldValData(fold):
-    data = json.load(open(str(cwd/"fold_data"/str(fold)/"val.json")))
-    return np.array([" ".join(t).lower().split(" ") for t in data["data"]]), np.array(data["label"])
-
-
-def loadOriginalTrain():
-    data = json.load(open(str(cwd / "original" / "train.json")))
-    labels = np.array([d['cuisine'].lower() for d in data])
-    ingredients = np.array([d['ingredients'] for d in data])
-    return ingredients, labels
-
-def loadPreprocessed():
-    data = json.load(open(str(cwd / "preprocessed.json")))
-    labels = np.array(data["label"])
-    ingredients = np.array(data["data"])
-    return ingredients, labels
-
+# Train, test functions
 def loadTrainData():
     data = json.load(open(str(cwd/"data"/"train.json")))
     return np.array(data["data"]), np.array(data["label"])
@@ -118,28 +108,63 @@ def loadTestData():
     return np.array(data["data"]), np.array(data["label"])
 
 
+# Manual five fold validation functions
+def loadFoldData(fold):
+    t, tl = loadFoldTrainData(fold)
+    v, vl = loadFoldValData(fold)
+    return t, tl, v, vl
+
+def loadFoldTrainData(fold):
+    data = json.load(open(str(cwd/"fold_data"/str(fold)/"train.json")))
+    # return np.array([[w.lower() for w in t] for t in data["data"]]), np.array(data["label"])
+    return np.array([" ".join(t).lower().split(" ") for t in data["data"]]), np.array(data["label"])
+
+def loadFoldValData(fold):
+    data = json.load(open(str(cwd/"fold_data"/str(fold)/"val.json")))
+    return np.array([" ".join(t).lower().split(" ") for t in data["data"]]), np.array(data["label"])
+
+def loadOriginalTrain():
+    data = json.load(open(str(cwd / "original" / "train.json")))
+    labels = np.array([d['cuisine'].lower() for d in data])
+    ingredients = np.array([d['ingredients'] for d in data])
+    return ingredients, labels
+
+def loadPreprocessed():
+    """"
+    Return the preprocessed training data (eliminate installation requirements of nltk and unidecode)
+    """
+    data = json.load(open(str(cwd / "preprocessed" / "train.json")))
+    return np.array(data["data"]), np.array(data["label"])
+
 def loadOfficialTestData():
     data = json.load(open(str(cwd / "original" / "test.json")))
     ingredients = np.array([d['ingredients'] for d in data])
     id = np.array([d['id'] for d in data])
     return id, ingredients
 
+def loadPreprocessTest():
+    """"
+    Return the preprocessed test data (eliminate installation requirements of nltk and unidecode)
+    """
+    data = json.load(open(str(cwd / "preprocessed" / "test.json")))
+    return np.array(data["id"]), np.array(data["data"])
+
 def saveModel(model, name):
     joblib.dump(model, str(cwd/"models"/name))
 
-def loadModelSVM(name, folder):
+def loadModel(name, folder):
+    """
+    Simply returns model
+
+    model can be encoded in the form of a dictionary with keys {preprocess, model, labelencoder}
+    """
     data = joblib.load(str(cwd / folder / name))
     return data
 
-def loadModel(name):
-    data = joblib.load(str(cwd/"models"/name))
-    return data["model"], data["labelencoder"]
-
-def loadModelOnly(name):
-    data = joblib.load(str(cwd/"models"/name))
-    return data
-
 def loadPreprocessModel(modelclass, ckpt, size):
+    """
+    Used for triplet loss encoding and autoencoder
+    """
     import torch
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -153,18 +178,19 @@ def loadPreprocessModel(modelclass, ckpt, size):
 
     return model
 
-def PMI(data, labels, mag):
-    from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+def PMI(data, labels):
     """
     Data: list of documents (each document is a list of ingredients)
+    
+    Return the Pointwise Mutual Information sorted by class 
     """
+    from sklearn.feature_extraction.text import CountVectorizer
+    
     data = [" ".join(t) for t in data]
     vectorizer = CountVectorizer()
 
     x = vectorizer.fit_transform(data)
     words = np.array(sum(x).todense())[0]
-    vocab = [x[0] for x in sorted(vectorizer.vocabulary_.items(), key=lambda x:x[1])]
-    print(len(vocab))
 
     train_label_dict = {}
     for uni in np.unique(labels):
@@ -190,59 +216,39 @@ def PMI(data, labels, mag):
         for w, c in v.items():
             PMI[k][w] = np.log(c) - np.log(words[w]) - np.log(class_counts[k] / total_classes)
 
+    return PMI
+
+
+def filterVocab(data, labels, mag):
+    """
+    Words with PMI close to zero (within distance of mag to zero) in each classes
+    Words which are eliminated for all classes forms the stopwords
+
+    return stopwords
+    """
+    from sklearn.feature_extraction.text import CountVectorizer
+
+    pmi = PMI(data, labels)
+
+    data = [" ".join(t) for t in data]
+    vectorizer = CountVectorizer()
+    vectorizer.fit_transform(data)
+    vocab = [x[0] for x in sorted(vectorizer.vocabulary_.items(), key=lambda x: x[1])]
+
     filtered = defaultdict(list)
-    for k, pmi in PMI.items():
-        filtered[k] = list(filter(lambda x: abs(x[1]) > mag, pmi.items()))
+    for k, p in pmi.items():
+        filtered[k] = list(filter(lambda x: abs(x[1]) > mag, p.items()))
 
     remaining = set([w for k, v in filtered.items() for w, s in v])
-    print(len(remaining))
     remaining_words = [vocab[r] for r in remaining]
     stopwords = list(filter(lambda x: x not in remaining_words, vocab))
 
     return stopwords
 
-    # # Retain Top Threshold proportion of words per class based on PMI
-    # sortedPMI = defaultdict(list)
-    # for k, pmi in PMI.items():
-    #     unique_words_class = len(pmi)
-    #     for w, score in sorted(pmi.items(), key=lambda x: x[1], reverse=True)[:int(threshold * unique_words_class)]:
-    #         sortedPMI[k].append(w)
-    #
-    allowed_words = set([w for words in filtered.values() for w in words])
-    # # Generate filtered documents
-    # processed_data = []
-    # for i in range(len(data)):
-    #     doc = data[i]
-    #     new_doc = list(filter(lambda x: x in allowed_words, doc))
-    #     processed_data.append(new_doc)
-    #     if not new_doc:
-    #         print(doc, "will not have any words.")
-    #         print("Cuisine Type:", labels[i], i)
-    return PMI
 
-def getPMIScore(word, PMI):
-    score = np.zeros(len(PMI.items()))
-    for i, (k, v) in enumerate(PMI.items()):
+def getPMIScore(word, pmi):
+    score = np.zeros(len(pmi.items()))
+    for i, (k, v) in enumerate(pmi.items()):
         if word in v:
             score[i] = v[word]
     return score
-
-def filterByTotalFreq(data, min_df, max_df):
-    words = " ".join([" ".join(t) for t in data]).split(' ')
-    words = Counter(words)
-    total_words = sum(words.values())
-    allowed_words = []
-    value = 0
-    for w, c in words.most_common():
-        value += float(c) / total_words
-        if value > max_df and value < min_df:
-            allowed_words.append(w)
-
-    processed_data = []
-    for i in range(len(data)):
-        doc = data[i]
-        new_doc = list(filter(lambda x: x in allowed_words, doc))
-        processed_data.append(new_doc)
-        if not new_doc:
-            print(doc, "will not have any words.")
-    return processed_data

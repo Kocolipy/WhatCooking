@@ -1,14 +1,6 @@
-# Import the required libraries
-
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import GridSearchCV
-from sklearn.pipeline import Pipeline
-from sklearn.svm import SVC
 from sklearn.cluster import KMeans, SpectralClustering
-from collections import Counter, defaultdict
+from collections import defaultdict
 from scipy.sparse import vstack
 import numpy as np
 from random import choices
@@ -16,29 +8,26 @@ from string import ascii_uppercase
 
 import os
 import pathlib
-import torch
 
-import mlp
 import utils
 
 cwd = pathlib.Path(os.getcwd())
 
 print("Loading data ...")
-train, train_label = utils.loadTrainData()
+train, train_label = utils.loadPreprocessed()
 
-# train = [" ".join(t) for t in train]
-
+# Combine training data into a giant class document
 grouped_docs = defaultdict(list)
 for i, c in enumerate(train_label):
-    grouped_docs[c] += train[i]
+    grouped_docs[c] += [train[i]]
 
 train = {}
 for k, v in grouped_docs.items():
     train[k] = " ".join(v)
 
 class Tree:
-    kmeans = KMeans(n_clusters=2, random_state=0)
-    # kmeans = SpectralClustering(n_clusters=2, gamma=1, random_state=0)
+    # kmeans = KMeans(n_clusters=2)
+    kmeans = SpectralClustering(n_clusters=2, gamma=1, random_state=0)
     data = train
     all_classes = set(["chinese", "filipino", "japanese", "korean", "thai", "vietnamese", "brazilian", "cajun_creole",
                    "mexican", "southern_us", "spanish", "italian", "greek", "french", "russian", "british", "jamaican",
@@ -106,30 +95,8 @@ tree = Tree(["chinese", "filipino", "japanese", "korean", "thai", "vietnamese", 
                    "mexican", "southern_us", "spanish", "italian", "greek", "french", "russian", "british", "jamaican",
                    "irish", "indian", "moroccan"])
 
-struct = tree.getStruct()
-print(struct)
-struct = tree.getBTSVMTree()
-print(struct)
+outputdivision = tree.getStruct()
+treestruct = tree.getBTSVMTree()
 print(tree)
-
-# tfidf = TfidfVectorizer()
-# # ["chinese", "filipino", "japanese", "korean", "vietnamese", "thai"]
-# for i in ["chinese", "filipino", "japanese", "korean", "vietnamese", "thai", "southern_us","french", "russian","british","irish", "indian", "moroccan", "jamaican", "mexican", "brazilian", "cajun_creole"]:
-#     del train[i]
-# tfidf.fit(train.values())
-# print(len(tfidf.vocabulary_))
-# train_ft = {}
-# for k, v in train.items():
-#     train_ft[k] = tfidf.transform([train[k]])
-
-# # # constant tf-idf
-# for i in ["chinese", "filipino", "japanese", "korean", "vietnamese", "thai", "southern_us","french", "russian","british","irish"]:
-#     del train_ft[i]
-
-# kmeans = KMeans(n_clusters=2, random_state=0).fit(vstack(train_ft.values()))
-# print(list(zip(list(train_ft.keys()), kmeans.labels_)))
-#
-# for i in [0.1, 1, 10]:
-#     kmeans = SpectralClustering(n_clusters=2, gamma=i, random_state=0).fit(vstack(train_ft.values()))
-#     print(list(zip(list(train_ft.keys()), kmeans.labels_)))
-
+print(outputdivision)
+print(treestruct)

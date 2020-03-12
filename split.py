@@ -1,18 +1,13 @@
 # Import the required libraries
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
-from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from scipy.sparse import vstack
-import numpy as np
 import os
 import pathlib
-import torch
-import mlp
 import utils
 
 cwd = pathlib.Path(os.getcwd())
