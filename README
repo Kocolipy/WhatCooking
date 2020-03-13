@@ -1,0 +1,10 @@
+main.py - used for training SVM OvR and SVM OvO models
+tsvm.py - used for training Twin SVM OvO models (requires installation of LightTwinSVM)
+submission.py - used to evaluate a model (produces a submission.csv which can be submitted to Kaggle)
+
+SVM BDT
+kmeans.py - used to obtain class clustering for BDT model
+bdtsvm_train.py - used for training SVM BDT model
+bdtsvm_eval.py - used to evaluate a BDT model (produces a submission.csv which can be submitted to Kaggle)
+
+datasplit.py - perform a train-test (9:1) split
